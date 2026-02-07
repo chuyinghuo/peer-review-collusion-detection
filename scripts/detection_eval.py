@@ -11,9 +11,8 @@ import os
 import argparse
 
 import utils
-import ds
+from utils import ds, telltail
 import oqc
-import telltail
 import fraudar
 
 def get_local_search_init(BA_mod):

@@ -1,0 +1,17 @@
+[build-system]
+requires = ["setuptools >= 77.0.3"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "peer-review-collusion-detection"
+version = "0.0.1"
+description = "Detecting reviewer-author collusion rings from paper bidding"
+readme = "readme.md"
+requires-python = ">=3.9"
+dependencies = [
+    "numpy",
+    "scipy",
+]
+
+[tool.setuptools.packages.find]
+where = ["libs"]

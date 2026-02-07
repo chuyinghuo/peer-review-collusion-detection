@@ -39,11 +39,11 @@ def count_cliques_c(matrices, k, gamma, dataset, timeout, bipartite):
     time_tag = time.time_ns()
     if bipartite:
         fname = f'_graph_{dataset}_bipartite_{time_tag}.txt'
-        exename = f"./count_cliques_bipartite.out"
+        exename = f"./cpp/count_cliques_bipartite.out"
         save_graph_bipartite(matrices, k, gamma, fname)
     else:
         fname = f'_graph_{dataset}_{time_tag}.txt'
-        exename = f"./count_cliques_c.out"
+        exename = f"./cpp/count_cliques_c.out"
         save_graph(matrices, k, gamma, fname)
 
     timeout_flag = False

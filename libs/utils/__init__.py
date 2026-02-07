@@ -180,3 +180,6 @@ def make_param_list(k_min, k_max, gamma_min, gamma_max, gamma_step, k_step=1):
 if __name__ == "__main__":
     load_data_aamas_sub3(variant=True)
     load_data_wu(variant=True)
+
+from . import ds
+from . import telltail

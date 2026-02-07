@@ -31,5 +31,3 @@ def densest_subgraph(G):
     assert np.isclose(f_star, m.ObjVal), f'{f_star}, {m.ObjVal}'
 
     return S_star, ''
-
-
