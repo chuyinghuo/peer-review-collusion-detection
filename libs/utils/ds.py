@@ -1,33 +1,47 @@
-import gurobipy as gp
 import numpy as np
+from pulp import LpProblem, LpMaximize, LpVariable, lpSum, LpStatus, value
+
 
 def densest_subgraph(G):
+    """
+    Open-source replacement for the original Gurobi-based LP, using PuLP (CBC).
+    Maximizes total edge weight inside a dense subgraph as before.
+    """
     assert all([G[i, i] == 0 for i in range(G.shape[0])])
+    n = G.shape[0]
 
-    m = gp.Model()
-    m.setParam('OutputFlag', 0)
-    m.setParam('Method', 1)
-    X = m.addMVar(G.shape, lb=0, ub=G, obj=1)
-    Y = m.addMVar(G.shape[0], lb=0, obj=0)
-    m.modelSense = gp.GRB.MAXIMIZE
-    m.addConstr(Y @ np.ones(G.shape[0]) <= 1)
-    m.addConstrs(X[i, :] <= Y[i] for i in range(G.shape[0]))
-    m.addConstrs(X[:, j] <= Y[j] for j in range(G.shape[0]))
+    # Build LP: variables X[i,j] in [0, G[i,j]], Y[i] >= 0
+    prob = LpProblem("densest_subgraph", LpMaximize)
+    X = {(i, j): LpVariable(f"X_{i}_{j}", lowBound=0, upBound=float(G[i, j]))
+         for i in range(n) for j in range(n)}
+    Y = {i: LpVariable(f"Y_{i}", lowBound=0) for i in range(n)}
 
-    m.optimize()
-    if m.status != gp.GRB.OPTIMAL:
+    # Objective: maximize sum of X (same as original)
+    prob += lpSum(X[i, j] for i in range(n) for j in range(n))
+
+    # Constraints: identical structure to original Gurobi model
+    prob += lpSum(Y[i] for i in range(n)) <= 1
+    for i in range(n):
+        prob += lpSum(X[i, j] for j in range(n)) <= Y[i]
+    for j in range(n):
+        prob += lpSum(X[i, j] for i in range(n)) <= Y[j]
+
+    prob.solve()
+    if LpStatus[prob.status] != "Optimal":
         print("Model not solved")
-        raise RuntimeError('unsolved')
+        raise RuntimeError("unsolved")
 
-    Y_ = Y.x
+    Y_ = np.array([value(Y[i]) for i in range(n)])
 
-    r_values =  np.unique(Y_)
+    r_values = np.unique(Y_)
     f_values = []
     for r in r_values:
         S = np.argwhere(Y_ >= r).flatten()
         f = G[np.ix_(S, S)].sum() / S.size
         f_values.append((f, S))
     f_star, S_star = max(f_values)
-    assert np.isclose(f_star, m.ObjVal), f'{f_star}, {m.ObjVal}'
+
+    # Objective consistency check
+    assert np.isclose(f_star, value(prob.objective)), f"{f_star}, {value(prob.objective)}"
 
     return S_star, ''

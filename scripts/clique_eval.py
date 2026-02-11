@@ -98,6 +98,7 @@ def run(dataset, param_list, timeout, bipartite, dir_name='results', verbose=Tru
     i = 0
     param_list = list(param_list)
     results = []
+    df = pd.DataFrame(columns=['k', 'gamma', 'num_cliques', 'dataset', 'time', 'timeout_flag'])
     infeasible_set = set()
     while i < len(param_list):
         gamma, k = param_list[i]

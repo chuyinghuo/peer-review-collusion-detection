@@ -1,5 +1,5 @@
-import gurobipy as gp
 import numpy as np
+from pulp import LpProblem, LpMaximize, LpVariable, lpSum, LpStatus  # type: ignore[import-untyped]
 import time
 import sys
 import math
@@ -24,49 +24,53 @@ REV_LOAD = 6
 
 def max_match(COI, pap_load, rev_load):
     S = np.ones_like(COI)
-    m = gp.Model()
-    m.setParam('OutputFlag', 0)
-    m.setParam('Method', 1)
-    F = m.addMVar(S.shape, lb=0, ub=(1-COI), obj=S)
-    m.modelSense = gp.GRB.MAXIMIZE
-    m.addConstrs(F[p, :] @ np.ones(S.shape[1]) <= pap_load for p in range(S.shape[0]))
-    m.addConstrs(np.ones(S.shape[0]) @ F[:, r] <= rev_load for r in range(S.shape[1]))
-    m.optimize()
-    if m.status != gp.GRB.OPTIMAL:
+    P, R = S.shape
+    prob = LpProblem("max_match", LpMaximize)
+    F = {(p, r): LpVariable(f"F_{p}_{r}", lowBound=0, upBound=float(1 - COI[p, r]))
+         for p in range(P) for r in range(R)}
+    prob += lpSum(S[p, r] * F[p, r] for p in range(P) for r in range(R))
+    for p in range(P):
+        prob += lpSum(F[p, r] for r in range(R)) <= pap_load
+    for r in range(R):
+        prob += lpSum(F[p, r] for p in range(P)) <= rev_load
+    prob.solve()
+    if LpStatus[prob.status] != "Optimal":
         print("Model not solved")
-        raise RuntimeError('unsolved')
-    F_ = F.x
+        raise RuntimeError("unsolved")
+    F_ = np.array([[F[p, r].value() for r in range(R)] for p in range(P)])
     return F_
 
 def match(S, COI, pap_load, rev_load, verbose=False):
+    stime = time.time()
     if verbose:
-        stime = time.time()
         print('Constructing LP')
 
-    m = gp.Model()
-    m.setParam('OutputFlag', 0)
-    m.setParam('Method', 1)
-    F = m.addMVar(S.shape, lb=0, ub=(1-COI), obj=S)
-    m.modelSense = gp.GRB.MAXIMIZE
-    m.addConstrs(F[p, :] @ np.ones(S.shape[1]) == pap_load for p in range(S.shape[0]))
-    m.addConstrs(np.ones(S.shape[0]) @ F[:, r] <= rev_load for r in range(S.shape[1]))
+    P, R = S.shape
+    prob = LpProblem("match", LpMaximize)
+    F = {(p, r): LpVariable(f"F_{p}_{r}", lowBound=0, upBound=float(1 - COI[p, r]))
+         for p in range(P) for r in range(R)}
+    prob += lpSum(S[p, r] * F[p, r] for p in range(P) for r in range(R))
+    for p in range(P):
+        prob += lpSum(F[p, r] for r in range(R)) == pap_load
+    for r in range(R):
+        prob += lpSum(F[p, r] for p in range(P)) <= rev_load
 
     if verbose:
         print('Done constructing', time.time() - stime)
         stime = time.time()
         print('Solving LP')
 
-    m.optimize()
-    if m.status != gp.GRB.OPTIMAL:
+    prob.solve()
+    if LpStatus[prob.status] != "Optimal":
         print("Model not solved")
-        raise RuntimeError('unsolved')
+        raise RuntimeError("unsolved")
 
     if verbose:
         print('Done solving', time.time() - stime)
         stime = time.time()
         print('Outputting LP')   
 
-    F_ = F.x
+    F_ = np.array([[F[p, r].value() for r in range(R)] for p in range(P)])
 
     if verbose:
         print('Done outputting', time.time() - stime)
