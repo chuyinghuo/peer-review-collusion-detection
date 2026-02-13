@@ -33,7 +33,10 @@ def load_data_wu(variant=False):
     assert B.shape == shape
 
     def dict_to_mat(dict_sp_t):
-        a = torch.sparse.FloatTensor(dict_sp_t["indices"], dict_sp_t["values"], dict_sp_t["size"])
+        a = torch.sparse_coo_tensor(
+            dict_sp_t["indices"], dict_sp_t["values"], dict_sp_t["size"],
+            dtype=torch.float32
+        )
         b = a.to_dense().numpy()
         return b
     r_subject = dict_to_mat(tensor_data['r_subject'])
@@ -75,8 +78,8 @@ def load_data_aamas():
     aamas['rid'] = aamas['Bidder'].str.slice_replace(0, 3).astype(int)
     aamas['pid'] = aamas['Submission'].astype(int)
     aamas = aamas.pivot(columns='rid', index='pid', values='Bid')
-    B = aamas.replace({'yes' : 2, 'maybe' : 1, 'conflict' : 0, np.nan : 0}).to_numpy()
-    A = aamas.replace({'yes' : 0, 'maybe' : 0, 'conflict' : 1, np.nan : 0}).to_numpy()
+    B = aamas.replace({'yes' : 2, 'maybe' : 1, 'conflict' : 0, np.nan : 0}).astype(np.float32).to_numpy()
+    A = aamas.replace({'yes' : 0, 'maybe' : 0, 'conflict' : 1, np.nan : 0}).astype(np.float32).to_numpy()
     assert np.all(B[A == 1] == 0)
     B = B.astype(np.float32)
     A = A.astype(np.float32)

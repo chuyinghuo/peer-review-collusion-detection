@@ -1,5 +1,11 @@
 import numpy as np
 import pandas as pd
+import sys
+import os
+
+# Add libs/ to Python path to allow importing utils package
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'libs'))
+
 import utils
 import time
 

@@ -1,6 +1,12 @@
 import numpy as np
 from scipy.stats import norm
 from scipy.optimize import root_scalar
+import sys
+import os
+
+# Add libs/ to Python path to allow importing utils package
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'libs'))
+
 import utils
 
 '''

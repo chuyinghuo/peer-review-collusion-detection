@@ -1,0 +1,4 @@
+/Users/chuyinghuo/Downloads/peer-review-collusion-detection/scripts/../libs/utils/__init__.py:78: FutureWarning: Downcasting behavior in `replace` is deprecated and will be removed in a future version. To retain the old behavior, explicitly call `result.infer_objects(copy=False)`. To opt-in to the future behavior, set `pd.set_option('future.no_silent_downcasting', True)`
+  B = aamas.replace({'yes' : 2, 'maybe' : 1, 'conflict' : 0, np.nan : 0}).to_numpy()
+/Users/chuyinghuo/Downloads/peer-review-collusion-detection/scripts/../libs/utils/__init__.py:79: FutureWarning: Downcasting behavior in `replace` is deprecated and will be removed in a future version. To retain the old behavior, explicitly call `result.infer_objects(copy=False)`. To opt-in to the future behavior, set `pd.set_option('future.no_silent_downcasting', True)`
+  A = aamas.replace({'yes' : 0, 'maybe' : 0, 'conflict' : 1, np.nan : 0}).to_numpy()

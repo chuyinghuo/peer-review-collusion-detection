@@ -10,6 +10,9 @@ import datetime
 import os 
 import argparse
 
+# Add libs/ to Python path to allow importing utils and fraudar packages
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'libs'))
+
 import utils
 from utils import ds, telltail
 import oqc

@@ -1,5 +1,10 @@
 import numpy as np
-from pulp import LpProblem, LpMaximize, LpVariable, lpSum, LpStatus  # type: ignore[import-untyped]
+from pulp import LpProblem, LpMaximize, LpVariable, lpSum, LpStatus, value  # type: ignore[import-untyped]
+try:
+    from pulp import PULP_CBC_CMD
+    _solver = PULP_CBC_CMD(msg=0)
+except Exception:
+    _solver = None  # use default (may print solver log)
 import time
 import sys
 import math
@@ -10,7 +15,9 @@ import itertools
 import datetime
 import os 
 import argparse
-import pickle
+
+# Add libs/ to Python path to allow importing utils package
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'libs'))
 
 import utils
 from detection_eval import plant_clique, plant_clique_bipartite
@@ -33,11 +40,14 @@ def max_match(COI, pap_load, rev_load):
         prob += lpSum(F[p, r] for r in range(R)) <= pap_load
     for r in range(R):
         prob += lpSum(F[p, r] for p in range(P)) <= rev_load
-    prob.solve()
+    if _solver is not None:
+        prob.solve(_solver)
+    else:
+        prob.solve()
     if LpStatus[prob.status] != "Optimal":
         print("Model not solved")
         raise RuntimeError("unsolved")
-    F_ = np.array([[F[p, r].value() for r in range(R)] for p in range(P)])
+    F_ = np.array([[value(F[p, r]) for r in range(R)] for p in range(P)])
     return F_
 
 def match(S, COI, pap_load, rev_load, verbose=False):
@@ -60,7 +70,10 @@ def match(S, COI, pap_load, rev_load, verbose=False):
         stime = time.time()
         print('Solving LP')
 
-    prob.solve()
+    if _solver is not None:
+        prob.solve(_solver)
+    else:
+        prob.solve()
     if LpStatus[prob.status] != "Optimal":
         print("Model not solved")
         raise RuntimeError("unsolved")
@@ -70,7 +83,7 @@ def match(S, COI, pap_load, rev_load, verbose=False):
         stime = time.time()
         print('Outputting LP')   
 
-    F_ = np.array([[F[p, r].value() for r in range(R)] for p in range(P)])
+    F_ = np.array([[value(F[p, r]) for r in range(R)] for p in range(P)])
 
     if verbose:
         print('Done outputting', time.time() - stime)
@@ -153,7 +166,7 @@ def plant_clique_attack(BA, B, A, k, gamma, rng):
 def plant_clique_attack_bipartite(B, A, COI, k, gamma, rng):
     return plant_clique_bipartite(B, A, COI, k, gamma, rng)
 
-def run_experiment(dataset, k, gamma, rng, num_trials, bid_weights, bipartite):
+def run_experiment(dataset, k, gamma, rng, num_trials, bid_weights, bipartite, verbose=False):
     data_dict = utils.load_data(dataset)
     B = data_dict['bid_matrix']
     A = data_dict['author_matrix']
@@ -163,6 +176,8 @@ def run_experiment(dataset, k, gamma, rng, num_trials, bid_weights, bipartite):
 
     records = []
     for t in range(num_trials):
+        if verbose:
+            print(f'  trial {t+1}/{num_trials} (solving LP, may take several min) ...', flush=True)
         t0 = time.time()
 
         if bipartite:
@@ -191,9 +206,11 @@ def run_experiments_all(dataset, param_list, num_trials, bid_weights, bipartite,
     assert not bid_weights, 'Should only run without bid weights'
 
     datestring = datetime.datetime.now().isoformat() 
-    fname = f'{dir_name}/success_results_{dataset}' + ('_bipartite' if bipartite else '') + f'_{datestring}'
+    fname = f'{dir_name}/success_results_{dataset}' + ('_bipartite' if bipartite else '') + f'_{datestring}.csv'
     results = {}
-    print(f'start : {fname}.csv')
+
+    os.makedirs(dir_name, exist_ok=True)
+    print(f'start : {fname}', flush=True)
 
     if rng_plant is None:
         rng_plant = np.random.default_rng(seed=0)
@@ -201,22 +218,25 @@ def run_experiments_all(dataset, param_list, num_trials, bid_weights, bipartite,
     try:
         for gamma, k in param_list:
             if verbose:
-                print(f'{dataset} ({k}, {gamma}) : {datetime.datetime.now()}')
+                print(f'{dataset} ({k}, {gamma}) : {datetime.datetime.now()}', flush=True)
             t0 = time.time()
-            records = run_experiment(dataset, k, gamma, rng=rng_plant, num_trials=num_trials, bid_weights=bid_weights, bipartite=bipartite)
+            records = run_experiment(dataset, k, gamma, rng=rng_plant, num_trials=num_trials, bid_weights=bid_weights, bipartite=bipartite, verbose=verbose)
             t1 = time.time()
             if verbose:
-                print(f'{dataset} ({k}, {gamma}) \t ({(t1-t0)/60:.02f})')
+                print(f'{dataset} ({k}, {gamma}) \t ({(t1-t0)/60:.02f})', flush=True)
             results[(k, gamma)] = records
             if save_results:
-                with open(fname + '.pkl', 'wb') as f:
-                    pickle.dump(results, f)
                 df = success_metrics_df(results)
-                df['bid_weights'] = bid_weights 
-                df.to_csv(fname + '.csv')
-        print(f'finish : {fname}.csv')
+                df['bid_weights'] = bid_weights
+                df.to_csv(fname, index=False)
+        print(f'finish : {fname}')
     except Exception as e:
         print(f'{repr(e)} : {fname}')
+        if results and save_results:
+            df = success_metrics_df(results)
+            df['bid_weights'] = bid_weights
+            df.to_csv(fname, index=False)
+            print(f'partial results saved : {fname}')
         if not suppress_exceptions:
             raise e
 

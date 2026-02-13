@@ -1,6 +1,12 @@
 import json
 import numpy as np
 import random
+import sys
+import os
+
+# Add libs/ to Python path to allow importing utils package
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'libs'))
+
 import utils
 
 '''

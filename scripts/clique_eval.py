@@ -3,6 +3,11 @@ import numpy as np
 import itertools
 import subprocess
 import sys
+import os
+
+# Add libs/ to Python path to allow importing utils package
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'libs'))
+
 import utils
 import time
 import pandas as pd
